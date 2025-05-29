@@ -15,14 +15,14 @@
 #define SI2C_DISABLE_IRQ()      __disable_irq()
 #define SI2C_ENABLE_IRQ()       __enable_irq()
 // GPIO操作宏
-#define SI2C_SET_SDA_HIGH()     _Msp_Gpio_Set_B7()
-#define SI2C_SET_SDA_LOW()      _Msp_Gpio_Reset_B7()
-#define SI2C_GET_SDA()          _Msp_Gpio_Get_B7()
-#define SI2C_SET_SDA_INPUT()    _Msp_Gpio_InputMode_B7()
-#define SI2C_SET_SDA_OUTPUT()   _Msp_Gpio_OutMode_B7()
-#define SI2C_SET_SCL_HIGH()     _Msp_Gpio_Set_B6()
-#define SI2C_SET_SCL_LOW()      _Msp_Gpio_Reset_B6()
-#define SI2C_SET_SCL_OUTPUT()   _Msp_Gpio_OutMode_B6()
+#define SI2C_SET_SDA_HIGH()     _Msp_Gpio_Set_B7()          //LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_7)
+#define SI2C_SET_SDA_LOW()      _Msp_Gpio_Reset_B7()        //LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_7)
+#define SI2C_GET_SDA()          _Msp_Gpio_Get_B7()          //LL_GPIO_IsInputPinSet(GPIOB, LL_GPIO_PIN_7)
+#define SI2C_SET_SDA_INPUT()    _Msp_Gpio_InputMode_B7()    //LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_7, LL_GPIO_MODE_INPUT)
+#define SI2C_SET_SDA_OUTPUT()   _Msp_Gpio_OutMode_B7()      //LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_7, LL_GPIO_MODE_OUTPUT)
+#define SI2C_SET_SCL_HIGH()     _Msp_Gpio_Set_B6()          //LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_6)
+#define SI2C_SET_SCL_LOW()      _Msp_Gpio_Reset_B6()        //LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_6)
+#define SI2C_SET_SCL_OUTPUT()   _Msp_Gpio_OutMode_B6()      //LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_6, LL_GPIO_MODE_OUTPUT)
 
 extern si2c_t si2c;
 void Si2c_Port_Delay_Us(uint32_t us);
