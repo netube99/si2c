@@ -12,7 +12,7 @@ void Si2c_Port_Delay_Us(uint32_t us)
 }
 
 //中断使能控制函数，用于临界区保护操作
-void Si2c_Critical(uint8_t on)
+void Si2c_Critical(bool on)
 {
     if(on) SI2C_DISABLE_IRQ();
     else SI2C_ENABLE_IRQ();

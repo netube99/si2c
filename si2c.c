@@ -15,7 +15,7 @@
 int Si2c_Init(si2c_t *si2c_handle,\
             int (*io_ctl)(hal_io_opt_e opt),\
             void (*delay_us)(uint32_t us),\
-            void (*irq_ctl)(uint8_t on))
+            void (*irq_ctl)(bool on))
 {
     if(si2c_handle)
     {
@@ -77,7 +77,7 @@ static void Si2c_Stop_Condition(si2c_t *si2c_handle)
     si2c_handle->hal_delay_us(SI2C_WAIT_TIME);
 }
 
-static uint8_t Si2c_Check_Ack(si2c_t *si2c_handle)
+static bool Si2c_Check_Ack(si2c_t *si2c_handle)
 {
     uint8_t ack;
     int i;
@@ -98,7 +98,7 @@ static uint8_t Si2c_Check_Ack(si2c_t *si2c_handle)
     si2c_handle->hal_io_ctl(HAL_IO_OPT_SET_SCL_LOW);
     si2c_handle->hal_io_ctl(HAL_IO_OPT_SET_SDA_OUTPUT);
     si2c_handle->hal_delay_us(SI2C_WAIT_TIME);
-    return ack;
+    return ack ? true : false;
 }
 
 static void Si2c_Check_Not_Ack(si2c_t *si2c_handle)
@@ -109,7 +109,7 @@ static void Si2c_Check_Not_Ack(si2c_t *si2c_handle)
     si2c_handle->hal_delay_us(SI2C_WAIT_TIME);
 }
 
-static void Si2c_Slave_Address(si2c_t *si2c_handle, uint8_t i2c_id, uint8_t readwrite)
+static void Si2c_Slave_Address(si2c_t *si2c_handle, uint8_t i2c_id, bool readwrite)
 {
     int x;
     if (readwrite) i2c_id |= I2C_READ;
@@ -192,7 +192,7 @@ static uint8_t Si2c_Read_Data(si2c_t *si2c_handle)
  * @param[in] len           需要读取的字节数，可为0
  * @param[in] use_reg       寄存器使用模式：
  *                          - USE_REG_ADDR: 需要先写入寄存器地址再读取数据
- *                          - WHITOUT_REG_ADDR: 直接读取数据（无寄存器地址阶段）
+ *                          - WITHOUT_REG_ADDR: 直接读取数据（无寄存器地址阶段）
  * @param[in] reg_size      寄存器地址宽度：
  *                          - REG8:  8位寄存器地址
  *                          - REG16: 16位寄存器地址
@@ -202,7 +202,7 @@ static uint8_t Si2c_Read_Data(si2c_t *si2c_handle)
  * @details 工作流程：
  * 1. USE_REG_ADDR模式：
  *    启动总线 → 写芯片ID → 写寄存器地址 → 重启总线 → 读芯片ID → 循环读取数据 → 结束总线
- * 2. WHITOUT_REG_ADDR模式：
+ * 2. WITHOUT_REG_ADDR模式：
  *    启动总线 → 读芯片ID → 循环读取数据 → 结束总线
  */
 uint8_t Si2c_Read(si2c_t *si2c_handle, uint8_t i2c_id, uint16_t regaddr, \
@@ -210,10 +210,10 @@ uint8_t Si2c_Read(si2c_t *si2c_handle, uint8_t i2c_id, uint16_t regaddr, \
 {
     uint8_t index;
     if(si2c_handle == NULL) return SWI2C_FALSE;
-    si2c_handle->critical(1);//进入临界区保护
+    si2c_handle->critical(true);//进入临界区保护
     Si2c_Port_Initial(si2c_handle);
     // 是否需要设定寄存器地址
-    if(!use_reg)
+    if(use_reg == USE_REG_ADDR)
     {
         Si2c_Start_Condition(si2c_handle);
         // 写 ID
@@ -221,7 +221,7 @@ uint8_t Si2c_Read(si2c_t *si2c_handle, uint8_t i2c_id, uint16_t regaddr, \
         if(!Si2c_Check_Ack(si2c_handle)) goto error_exit;
         si2c_handle->hal_delay_us(SI2C_WAIT_TIME);
         // 16位寄存器地址
-        if(reg_size)
+        if(reg_size == REG16)
         {
             // 写高八位地址
             Si2c_Register_Address(si2c_handle, (uint8_t)(regaddr >> 8));
@@ -242,7 +242,7 @@ uint8_t Si2c_Read(si2c_t *si2c_handle, uint8_t i2c_id, uint16_t regaddr, \
     if(len == 0)
     {
         Si2c_Stop_Condition(si2c_handle);
-        si2c_handle->critical(0);//退出临界区保护
+        si2c_handle->critical(false);//退出临界区保护
         return SWI2C_TRUE;  // 无数据读取，但 ACK 成功
     }
     // 循环读数据（len > 0）
@@ -258,11 +258,11 @@ uint8_t Si2c_Read(si2c_t *si2c_handle, uint8_t i2c_id, uint16_t regaddr, \
         }
     }
     Si2c_Stop_Condition(si2c_handle);
-    si2c_handle->critical(0);//退出临界区保护
+    si2c_handle->critical(false);//退出临界区保护
     return SWI2C_TRUE;
 error_exit:
     Si2c_Stop_Condition(si2c_handle);  // 确保在错误时发送 STOP
-    si2c_handle->critical(0);//退出临界区保护
+    si2c_handle->critical(false);//退出临界区保护
     return SWI2C_FALSE;
 }
 
@@ -294,7 +294,7 @@ uint8_t Si2c_Write(si2c_t *si2c_handle, uint8_t i2c_id, uint16_t regaddr,
                    uint8_t *pdata, uint8_t len, bool use_reg, bool reg_size)
 {
     uint8_t index;
-    si2c_handle->critical(1);//进入临界区保护
+    si2c_handle->critical(true);//进入临界区保护
     Si2c_Port_Initial(si2c_handle);
     Si2c_Start_Condition(si2c_handle);
     // 写 ID
@@ -302,10 +302,10 @@ uint8_t Si2c_Write(si2c_t *si2c_handle, uint8_t i2c_id, uint16_t regaddr,
     if(!Si2c_Check_Ack(si2c_handle)) goto error_exit;
     si2c_handle->hal_delay_us(SI2C_WAIT_TIME);
     // 是否需要设定寄存器地址
-    if(!use_reg)
+    if(use_reg == USE_REG_ADDR)
     {
         // 16位寄存器地址
-        if(reg_size)
+        if(reg_size == REG16)
         {
             // 写高八位地址
             Si2c_Register_Address(si2c_handle, (uint8_t)(regaddr >> 8));
@@ -328,11 +328,11 @@ uint8_t Si2c_Write(si2c_t *si2c_handle, uint8_t i2c_id, uint16_t regaddr,
         }
     }
     Si2c_Stop_Condition(si2c_handle);
-    si2c_handle->critical(0);//退出临界区保护
+    si2c_handle->critical(false);//退出临界区保护
     return SWI2C_TRUE;
 error_exit:
     Si2c_Stop_Condition(si2c_handle);
-    si2c_handle->critical(0);//退出临界区保护
+    si2c_handle->critical(false);//退出临界区保护
     return SWI2C_FALSE;
 }
 
@@ -349,14 +349,14 @@ error_exit:
 uint8_t Si2c_General_Call_Reset(si2c_t *si2c_handle)
 {
     uint8_t index;
-    si2c_handle->critical(1);//进入临界区保护
+    si2c_handle->critical(true);//进入临界区保护
     Si2c_Port_Initial(si2c_handle);
     Si2c_Start_Condition(si2c_handle);
     Si2c_Slave_Address(si2c_handle, 0x00, WRITE_CMD);
     if(!Si2c_Check_Ack(si2c_handle))
     {
         Si2c_Stop_Condition(si2c_handle);
-        si2c_handle->critical(0);//退出临界区保护
+        si2c_handle->critical(false);//退出临界区保护
         return SWI2C_FALSE;
     }
     si2c_handle->hal_delay_us(SI2C_WAIT_TIME);
@@ -364,12 +364,12 @@ uint8_t Si2c_General_Call_Reset(si2c_t *si2c_handle)
     if(!Si2c_Check_Ack(si2c_handle))
     {
         Si2c_Stop_Condition(si2c_handle);
-        si2c_handle->critical(0);//退出临界区保护
+        si2c_handle->critical(false);//退出临界区保护
         return SWI2C_FALSE;
     }
     si2c_handle->hal_delay_us(SI2C_WAIT_TIME);
     Si2c_Stop_Condition(si2c_handle);
-    si2c_handle->critical(0);//退出临界区保护
+    si2c_handle->critical(false);//退出临界区保护
     return SWI2C_TRUE;
 }
 
@@ -386,16 +386,16 @@ uint8_t Si2c_General_Call_Reset(si2c_t *si2c_handle)
  */
 uint8_t Si2c_Check_Slave_Addr(si2c_t *si2c_handle, uint8_t i2c_id)
 {
-    si2c_handle->critical(1);//进入临界区保护
+    si2c_handle->critical(true);//进入临界区保护
     Si2c_Start_Condition(si2c_handle);
     Si2c_Slave_Address(si2c_handle, i2c_id, WRITE_CMD);
     if(!Si2c_Check_Ack(si2c_handle))
     {
         Si2c_Stop_Condition(si2c_handle);
-        si2c_handle->critical(0);//退出临界区保护
+        si2c_handle->critical(false);//退出临界区保护
         return SWI2C_FALSE;
     }
     Si2c_Stop_Condition(si2c_handle);
-    si2c_handle->critical(0);//退出临界区保护
+    si2c_handle->critical(false);//退出临界区保护
     return SWI2C_TRUE;
 }

@@ -27,6 +27,6 @@
 extern si2c_t si2c;
 void Si2c_Port_Delay_Us(uint32_t us);
 int Si2c_Port_Ioctl(uint8_t opt);
-void Si2c_Critical(uint8_t on);
+void Si2c_Critical(bool on);
 
 #endif

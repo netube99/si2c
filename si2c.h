@@ -6,15 +6,21 @@
 
 #define I2C_READ            0x01    // 读指令bit定义
 #define SI2C_WAIT_TIME      1       // 软件简易延时时间
-#define READ_CMD            1       // 读
-#define WRITE_CMD           0       // 写
-#define SWI2C_TRUE          1       // I2C操作成功
-#define SWI2C_FALSE         0       // I2C操作失败
+// 命令定义
+#define READ_CMD            true    // 读
+#define WRITE_CMD           false   // 写
 
-#define USE_REG_ADDR        0       // 使用寄存器地址
-#define WHITOUT_REG_ADDR    1       // 不使用寄存器地址
-#define REG8                0       // 使用八位寄存器地址
-#define REG16               1       // 使用十六位寄存器地址
+// 返回值定义
+#define SWI2C_TRUE          true    // I2C操作成功
+#define SWI2C_FALSE         false   // I2C操作失败
+
+// 寄存器地址使用方式定义
+#define USE_REG_ADDR        false   // 使用寄存器地址
+#define WITHOUT_REG_ADDR    true    // 不使用寄存器地址
+
+// 寄存器地址宽度定义
+#define REG8                false   // 使用八位寄存器地址
+#define REG16               true    // 使用十六位寄存器地址
 
 //引脚操作枚举
 typedef enum
@@ -36,13 +42,13 @@ typedef struct si2c_s
 {
     int (*hal_io_ctl)(hal_io_opt_e opt);
     void (*hal_delay_us)(uint32_t us);
-    void (*critical)(uint8_t on);
+    void (*critical)(bool on);
 } si2c_t;
 
 int Si2c_Init(si2c_t *si2c_handle, \
             int (*io_ctl)(hal_io_opt_e opt),\
             void (*delay_us)(uint32_t us), \
-            void (*irq_ctl)(uint8_t on));
+            void (*irq_ctl)(bool on));
 uint8_t Si2c_Read(si2c_t *si2c_handle, uint8_t i2c_id, uint16_t regaddr, \
                 uint8_t *pdata, uint8_t len, bool use_reg, bool reg_size);
 uint8_t Si2c_Write(si2c_t *si2c_handle, uint8_t i2c_id, uint16_t regaddr, \
